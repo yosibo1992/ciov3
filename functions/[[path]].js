@@ -28,11 +28,13 @@ export async function onRequest(context) {
     return Response.redirect(redirectUrl, 301);
   }
 
-  // Custom domain'deyiz ve Türkiye’den gelen normal kullanıcı → tr.html'e yönlendir
-  if (country === 'TR' && (host === yeniDomain || host === 'www.' + yeniDomain)) {
-    const redirectUrl = new URL('/tr.html', url.origin);
-    return Response.redirect(redirectUrl.toString(), 302);
-  }
+  if (host === yeniDomain || host === 'www.' + yeniDomain) {
+      if (country === 'TR') {
+        return Response.redirect(`${url.origin}/tr.html`, 302);
+      } else {
+        return Response.redirect(`${url.origin}/index2.html`, 302);
+      }
+    }
 
   // Diğer herkes → normal index.html
   return context.next();
