@@ -1,4 +1,4 @@
-// functions/[[path]].js  ← aynı dosya
+// functions/[[path]].js – jojobet gibi 308 + cache header
 export async function onRequest(context) {
   const request = context.request;
   const url = new URL(request.url);
@@ -10,27 +10,24 @@ export async function onRequest(context) {
 
   const host = url.hostname;
 
-  // Sadece ana sayfa için çalışsın
   if (url.pathname !== '/' && url.pathname !== '/index.html') {
     return context.next();
   }
 
-  // Googlebot → HİÇBİR ZAMAN 301 GÖRMESİN
-  const isGoogle = /googlebot|mediapartners|adsbot|google-inspectiontool|storebot|googleweblight|googleother/i.test(ua);
-  if (isGoogle) {
-    return context.next(); // Google her zaman pages.dev’de index.html görsün
+  if (/googlebot|mediapartners|adsbot|google-inspectiontool|storebot|googleweblight|googleother/i.test(ua)) {
+    return context.next(); // Google 301 görmesin
   }
 
-  // Türkiye’den gelen → 301 ile yeni domaine
   if (country === 'TR' && host === eski) {
-    return Response.redirect(`https://${yeni}${url.pathname}${url.search}`, 301);
+    const response = Response.redirect(`https://${yeni}${url.pathname}${url.search}`, 308); // jojobet gibi 308
+    response.headers.set('Cache-Control', 'public, max-age=31536000, immutable'); // 1 yıl cache
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload'); // HSTS preload
+    return response;
   }
 
-  // Yeni domain’de Türkiye → tr.html
   if (country === 'TR' && (host === yeni || host === 'www.' + yeni)) {
     return Response.redirect(`${url.origin}/tr.html`, 302);
   }
 
-  // YENİ DOMAIN’DE GOOGLE DIŞINDAKİ HERKES → index.html görsün (yeni domain sıralamaya girmesin)
   return context.next();
 }
