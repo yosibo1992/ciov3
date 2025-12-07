@@ -1,33 +1,39 @@
-export async function onRequest({ request }) {
+export async function onRequest(context) {
+  const request = context.request;
   const url = new URL(request.url);
-  const country = request.headers.get("cf-ipcountry") || "XX";
-  const ua = (request.headers.get("user-agent") || "").toLowerCase();
+  const userAgent = (request.headers.get('user-agent') || '').toLowerCase();
+  const country = request.headers.get('cf-ipcountry') || 'XX';
 
-  const isGoogle = /googlebot|mediapartners|adsbot|google-inspectiontool|storebot|googleweblight/i.test(ua);
-
-  // ███ BURAYA SADECE KENDİ DOMAINLERİNİ YAZ ███
-  const eski = "betcio-resmigir.pages.dev";     // ← senin pages.dev
-  const yeni = "betcio-resmigir.pagesdev.us";           // ← custom domain (BTK’sız)
-  // █████████████████████████████████████████
+  // DEĞİŞTİR BURAYI
+  const eskiDomain = "betcio-resmigir.pages.dev";   // ← senin pages.dev adresin
+  const yeniDomain = "betcio-resmigir.pagesdev.us";         // ← custom domainin
+  // BİTİŞ
 
   const host = url.hostname;
 
-  // 1) Google botu → hiçbir şeye dokunma, her şey eski gibi kalsın
-  if (isGoogle) return fetch(request);
-
-  // 2) Türkiye’den pages.dev’e gelenler → 301 ile custom domain’e at
-  if (country === "TR" && host === eski) {
-    return Response.redirect(`https://${yeni}${url.pathname}${url.search}`, 301);
+  // Sadece ana sayfa ve index.html için çalışsın (senin istediğin gibi)
+  if (url.pathname !== '/' && url.pathname !== '/index.html') {
+    return context.next();
   }
 
-  // 3) Custom domain’deyiz → Türkiye ise tr.html, Google/yabancı ise index2.html
-  if (host === yeni) {
-    if (url.pathname === "/" || url.pathname === "/index.html") {
-      const hedef = country === "TR" ? "/tr.html" : "/index2.html";
-      return Response.redirect(url.origin + hedef, 302);
-    }
+  // Googlebot kontrolü
+  const isGooglebot = /googlebot|mediapartners-google|adsbot-google|google-inspectiontool|googleweblight/i.test(userAgent);
+  if (isGooglebot) {
+    return context.next(); // index.html dönsün (SEO için)
   }
 
-  // Diğer her şey normal devam etsin
-  return fetch(request);
+  // pages.dev'e Türkiye’den gelenleri custom domain'e 301 at
+  if (country === 'TR' && host === eskiDomain) {
+    const redirectUrl = `https://${yeniDomain}${url.pathname}${url.search}`;
+    return Response.redirect(redirectUrl, 301);
+  }
+
+  // Custom domain'deyiz ve Türkiye’den gelen normal kullanıcı → tr.html'e yönlendir
+  if (country === 'TR' && (host === yeniDomain || host === 'www.' + yeniDomain)) {
+    const redirectUrl = new URL('/tr.html', url.origin);
+    return Response.redirect(redirectUrl.toString(), 302);
+  }
+
+  // Diğer herkes → normal index.html
+  return context.next();
 }
