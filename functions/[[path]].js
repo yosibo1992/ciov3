@@ -1,38 +1,33 @@
-export async function onRequest(context) {
-  const request = context.request;
+export async function onRequest({ request }) {
   const url = new URL(request.url);
   const country = request.headers.get("cf-ipcountry") || "XX";
-  const userAgent = (request.headers.get("user-agent") || "").toLowerCase();
-  const isGooglebot = /googlebot|mediapartners|adsbot|google-inspectiontool|storebot-google|googleweblight/i.test(userAgent);
+  const ua = (request.headers.get("user-agent") || "").toLowerCase();
 
-  // ███████ SADECE BURALARI DEĞİŞTİR ███████
-  const eskiDomain = "betcio-resmigir.pages.dev";   // ← senin pages.dev adresin
-  const yeniDomain = "betcio-resmigir.pagesdev.us";         // ← custom domainin (www'suz yaz)
+  const isGoogle = /googlebot|mediapartners|adsbot|google-inspectiontool|storebot|googleweblight/i.test(ua);
+
+  // ███ BURAYA SADECE KENDİ DOMAINLERİNİ YAZ ███
+  const eski = "betcio-resmigir.pages.dev";     // ← senin pages.dev
+  const yeni = "betcio-resmigir.pagesdev.us";           // ← custom domain (BTK’sız)
   // █████████████████████████████████████████
 
   const host = url.hostname;
 
-  // Googlebot her şeyi olduğu gibi görsün (hiç dokunmayalım)
-  if (isGooglebot) return context.next();
+  // 1) Google botu → hiçbir şeye dokunma, her şey eski gibi kalsın
+  if (isGoogle) return fetch(request);
 
-  // 1) pages.dev’e Türkiye’den gelenler → 301 ile yeni domain’e
-  if (country === "TR" && host === eskiDomain) {
-    return Response.redirect(`https://${yeniDomain}${url.pathname}${url.search}`, 301);
+  // 2) Türkiye’den pages.dev’e gelenler → 301 ile custom domain’e at
+  if (country === "TR" && host === eski) {
+    return Response.redirect(`https://${yeni}${url.pathname}${url.search}`, 301);
   }
 
-  // 2) Yeni domaindeyiz (www olsun olmasın aynı şeyi yapsın)
-  if (host === yeniDomain) {
+  // 3) Custom domain’deyiz → Türkiye ise tr.html, Google/yabancı ise index2.html
+  if (host === yeni) {
     if (url.pathname === "/" || url.pathname === "/index.html") {
-      if (country === "TR") {
-        // Türkiye → tr.html göster
-        return Response.redirect(`${url.origin}/tr.html`, 302);
-      } else {
-        // Google veya yabancı → index2.html göster (linkleri düzeltilmiş)
-        return Response.redirect(`${url.origin}/index2.html`, 302);
-      }
+      const hedef = country === "TR" ? "/tr.html" : "/index2.html";
+      return Response.redirect(url.origin + hedef, 302);
     }
   }
 
   // Diğer her şey normal devam etsin
-  return context.next();
+  return fetch(request);
 }
