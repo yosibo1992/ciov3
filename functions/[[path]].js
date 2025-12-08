@@ -25,7 +25,7 @@ export async function onRequest(context) {
     return response;
   }
 
-  if (country === 'TR' && (host === yeni || host === 'www.' + yeni)) {
+  if (country === 'TR' && host === yeni) {
     return Response.redirect(`${url.origin}/tr.html`, 302);
   }
 
